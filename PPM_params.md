@@ -9,7 +9,7 @@ We use the BEST proposed model by [[R2]](#R2) and specify the originally propose
 | --------          |   ------- |
 |pattern_size       |   $[3, 5, 7, 11, 17, 21]$ |
 |min_freq           |   $0.00000001$|
-|selection_method   |   $\mathtt{PROB\_LEN\_DIST}$|
+|selection_method   |   $`\mathtt{PROB\_LEN\_DIST}`$|
 
 ## Most-probable path
 The most-probable path algorithm previously proposed for suffix prediction by [[R3]](#R3) is extended by HMM-based process phases. We train phase-specific transition probabilities and integrate the phase transition probabilities for sequence extrapolation into the algorithm. Since the algorithm itself is free of additional parameters, we perform single runs of the algorithm for the given set of HMMs used for phase identification on a given dataset.
