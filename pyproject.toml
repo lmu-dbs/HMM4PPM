@@ -1,0 +1,45 @@
+[project]
+name = "hmm4ppm"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Simon Rauch",email = "rauch@dbs.ifi.lmu.de"}
+]
+readme = "README.md"
+requires-python = "<3.15,>=3.12"
+dependencies = [
+    "pandas (>=2.3.3,<3.0.0)",
+    "scikit-learn (>=1.8.0,<2.0.0)",
+    "torch (==2.9.1+cpu)",
+    "torchvision (==0.24.1+cpu)",
+    "pyro-ppl (>=1.9.1,<2.0.0)",
+    "numpy (<2.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+]
+
+[tool.poetry]
+packages = [{include = "hmm4ppm", from = "src"}]
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^7.1.0"
+
+
+[[tool.poetry.source]]
+name = "pytorch_gpu"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
+
+[[tool.poetry.source]]
+name = "pytorch_cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+
+[tool.poetry.dependencies]
+torch = {source = "pytorch_cpu"}
+torchvision = {source = "pytorch_cpu"}
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
