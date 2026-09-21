@@ -37,8 +37,8 @@ The LSTM is adapted from [[R5]](#R5) and extended by process phases as additiona
 
 # References
 
-<a id="R2">[R2]</a> Simon Rauch, Christian M. M. Frey, Andrea Maldonado, Daniel Schuster, Gabriel Tavares, and Thomas Seidl. 2026. Hierarchical structuring of bilaterally expanding subtrace patterns for efficient tree-based activity suffix prediction. Process Science 3, 1 (2026). doi:10.1007/s44311-026-00050-y
+<a id="R2">[R2]</a> Simon Rauch, Christian M. M. Frey, Andrea Maldonado, Daniel Schuster, Gabriel Tavares, and Thomas Seidl. 2026. Hierarchical structuring of bilaterally expanding subtrace patterns for efficient tree-based activity suffix prediction. Process Science 3, 1 (2026). doi:<https://doi.org/10.1007/s44311-026-00050-y>
 
-<a id="R3">[R3]</a> Sjoerd van der Spoel, Maurice van Keulen, and Chintan Amrit. 2013. Process Prediction in Noisy Data Sets: A Case Study in a Dutch Hospital. Springer, Berlin, Heidelberg, 60–83. doi:10.1007/978-3-642-40919-6_4
+<a id="R3">[R3]</a> Sjoerd van der Spoel, Maurice van Keulen, and Chintan Amrit. 2013. Process Prediction in Noisy Data Sets: A Case Study in a Dutch Hospital. Springer, Berlin, Heidelberg, 60–83. doi:<https://doi.org/10.1007/978-3-642-40919-6_4>
 
-<a id="R5">[R5]</a> Manuel Camargo, Marlon Dumas, and Oscar González-Rojas. 2019. Learning Accurate LSTM Models of Business Processes. Springer International Publishing, 286–302. doi:10.1007/978-3-030-26619-6_19
+<a id="R5">[R5]</a> Manuel Camargo, Marlon Dumas, and Oscar González-Rojas. 2019. Learning Accurate LSTM Models of Business Processes. Springer International Publishing, 286–302. doi:<https://doi.org/10.1007/978-3-030-26619-6_19>
