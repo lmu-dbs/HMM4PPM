@@ -11,7 +11,7 @@ The remainder of signal channels follows distributional characteristics for the 
 - $Categorical(p) \rightarrow Dirichlet(p')$
 - $N(\mu, \sigma) \rightarrow \mu \sim N(0, 1), \sigma \sim HalfNormal(0, 1)$ 
 - $Gamma(\alpha, \theta) \rightarrow \alpha \sim LogNormal(0, 1), \theta \sim LogNormal(0, 1)$
-- $ZeroInflatedGamma(z, \alpha, \theta) \rightarrow z \sim Bernoulli(\pi_{zero}), \alpha \sim LogNormal(0, 1), \theta \sim LogNormal(0, 1)$
+- $ZeroInflatedGamma(\pi_{zero}, \alpha, \theta) \rightarrow \pi_{zero} \sim Beta(1, 1), \alpha \sim LogNormal(0, 1), \theta \sim LogNormal(0, 1)$
 
 ### Initial distribution
 
@@ -78,14 +78,14 @@ $$B^{Resource} \sim Categorical(p_{Resource})$$
 
 ### Time since last event (TSLE)
 
-$$Z_{TSLE} \sim Bernoulli(\pi_{TSLE})$$
+$$Z_{TSLE} \sim Bernoulli(\pi_{zero})$$
 
 $$B^{TSLE} \sim \begin{cases}0 & \text{,if} \quad Z_{TSLE} = 0\\
     Gamma(\alpha_{TSLE}, \beta_{TSLE}) & \text{,if} \quad Z_{TSLE}=1\end{cases}$$
 
 ### Time since case start (TSCS)
 
-$$Z_{TSCS} \sim Bernoulli(\pi_{TSCS})$$
+$$Z_{TSCS} \sim Bernoulli(\pi_{zero})$$
 
 $$B^{TSCS} \sim \begin{cases}0 & \text{,if} \quad Z_{TSCS}=0\\
     Gamma(\alpha_{TSCS}, \beta_{TSCS}) & \text{,if} \quad Z_{TSCS}=1\end{cases}$$
