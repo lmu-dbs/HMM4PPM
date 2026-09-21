@@ -33,7 +33,7 @@ The LSTM is adapted from [[R5]](#R5) and extended by process phases as additiona
 |learning_rate              |   $0.001$|
 |batch_size                 |   $32$|
 |dropout                    |   $0.2$|
-|variant                    |   $[\text{'full\_shared'}, \text{'shared\_categorical'}]$|
+|variant                    |   $[\text{'full}\_\text{shared'}, \text{'shared}\_\text{categorical'}]$|
 
 # References
 
