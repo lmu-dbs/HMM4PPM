@@ -87,4 +87,5 @@ $$B^{TSLE} \sim \begin{cases}0 & \text{,if} \quad Z_{TSLE} = 0\\
 
 $$Z_{TSCS} \sim Bernoulli(\pi_{TSCS})$$
 
-$$B^{TSCS} \sim \begin{cases}0 & \text{,if} \quad Z_{TSCS}=0\\Gamma(\alpha_{TSCS}, \beta_{TSCS}) & \text{,if} \quad Z_{TSCS}=1\end{cases}$$
+$$B^{TSCS} \sim \begin{cases}0 & \text{,if} \quad Z_{TSCS}=0\\
+    Gamma(\alpha_{TSCS}, \beta_{TSCS}) & \text{,if} \quad Z_{TSCS}=1\end{cases}$$
