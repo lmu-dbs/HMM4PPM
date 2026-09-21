@@ -71,20 +71,20 @@ The resulting samples for the emissions are then sampled from a $Categorical$ di
 ## Distributional assumptions per signal channel
 
 ### Activity
-$B^{Activity} \sim Categorical(p_{Activity})$
+$$B^{Activity} \sim Categorical(p_{Activity})$$
 
 ### Resource
-$B^{Resource} \sim Categorical(p_{Resource})$
+$$B^{Resource} \sim Categorical(p_{Resource})$$
 
 ### Time since last event (TSLE)
 
-$Z_{TSLE} \sim Bernoulli(\pi_{TSLE})$
+$$Z_{TSLE} \sim Bernoulli(\pi_{TSLE})$$
 
-$B^{TSLE} \sim \begin{cases}0 & \text{,if} \quad Z_{TSLE} = 0\\
-    Gamma(\alpha_{TSLE}, \beta_{TSLE}) & \text{,if} \quad Z_{TSLE}=1\end{cases}$
+$$B^{TSLE} \sim \begin{cases}0 & \text{,if} \quad Z_{TSLE} = 0\\
+    Gamma(\alpha_{TSLE}, \beta_{TSLE}) & \text{,if} \quad Z_{TSLE}=1\end{cases}$$
 
 ### Time since case start (TSCS)
 
-$Z_{TSCS} \sim Bernoulli(\pi_{TSCS})$
+$$Z_{TSCS} \sim Bernoulli(\pi_{TSCS})$$
 
-$B^{TSCS} \sim \begin{cases}0 & \text{,if} \quad Z_{TSCS}=0\\Gamma(\alpha_{TSCS}, \beta_{TSCS}) & \text{,if} \quad Z_{TSCS}=1\end{cases}$
+$$B^{TSCS} \sim \begin{cases}0 & \text{,if} \quad Z_{TSCS}=0\\Gamma(\alpha_{TSCS}, \beta_{TSCS}) & \text{,if} \quad Z_{TSCS}=1\end{cases}$$
