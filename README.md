@@ -2,8 +2,9 @@
 
 This is the implementation accompanying the paper 'Process Phase Segmentation with Mixed-Type Hidden Markov Models for Training Local Predictive Process Monitoring Models' submitted to the ICPM Conference 2027
 
-The HMM specification referenced in the paper (footnote 3) is available in `HMM_spec.md`.
-The set of PPM parameters by model referenced in the paper (footnote 6) is available under `PPM_params.md`.
+> [!NOTE]
+> The HMM specification referenced in the paper (footnote 3) is available in [`HMM_spec.md`](HMM_spec.md).
+> The set of PPM parameters by model referenced in the paper (footnote 6) is available under [`PPM_params.md`](PPM_params.md).
 
 ## Framework
 
