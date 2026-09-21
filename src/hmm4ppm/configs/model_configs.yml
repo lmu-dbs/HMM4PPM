@@ -1,0 +1,218 @@
+test_config: # model training parameters go here
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: [2000]
+      hidden_dim: [5]
+      markov_order: [1]
+      pad_buffer: [1.2] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      # filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      learning_rate: [0.02]
+      hmm_batch_size: [20]
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [BESTHMMPhases]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      max_pattern_size_train: [3,5,7,11,17,21]
+      process_stage_width_percentage: [null]
+      min_freq: [0.00000001]
+      task: ['rtp']
+      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
+      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      prune_func: [null]
+      selection_method: ['PROB_LEN_DIST']
+      weights: [null]
+
+hmm_training_config:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: [2000]
+      hidden_dim: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+      markov_order: [1, 2, 3]
+      pad_buffer: [1.2] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      # filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      learning_rate: [0.02]
+      hmm_batch_size: [20]
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: []
+    model_params: []
+
+full_pipeline_config_LSTM:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: []
+      hidden_dim: []
+      markov_order: []
+      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      learning_rate: []
+      hmm_batch_size: []
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [LSTM]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      load_trained: [False]
+      min_prefix_len: [2]
+      num_time_features: [1]
+      embedding_training: [False]
+      n_epochs_embedding: [100]
+      variant: ['full_shared', 'shared_categorical']
+      hidden_size: [100]
+      seq_len: [3, 5, 10]
+      epochs: [200]
+      dropout: [0.2]
+      lr: [0.001]
+      batch_size: [32]
+      phase_loss_weight: [1.0]
+      early_stopping_patience: [42]
+      reuse_fitted: [True]
+
+full_pipeline_config_best:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: []
+      hidden_dim: []
+      markov_order: []
+      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      learning_rate: []
+      hmm_batch_size: []
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [BESTHMMPhases]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      max_pattern_size_train: [3,5,7,11,17,21]
+      process_stage_width_percentage: [null]
+      min_freq: [0.00000001]
+      task: ['rtp']
+      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
+      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      prune_func: [null]
+      selection_method: ['PROB_LEN_DIST']
+      weights: [null]
+
+full_pipeline_config_best_vanilla:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: []
+      hidden_dim: []
+      markov_order: []
+      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      learning_rate: []
+      hmm_batch_size: []
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [BESTVanillaPhases]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      max_pattern_size_train: [3,5,7,11,17,21]
+      process_stage_width_percentage: [0, 0.025, 0.1, 0.2, 0.5, 1]
+      min_freq: [0.00000001]
+      task: ['rtp']
+      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
+      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      prune_func: [null]
+      selection_method: ['PROB_LEN_DIST']
+      weights: [null]
+
+full_pipeline_config_vanderspoel:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: []
+      hidden_dim: []
+      markov_order: []
+      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      learning_rate: []
+      hmm_batch_size: []
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [vanderSpoel]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      task: ['rtp']
+      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
+      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+
+full_pipeline_config_tree:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: []
+      hidden_dim: []
+      markov_order: []
+      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      learning_rate: []
+      hmm_batch_size: []
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+  ppm_config:
+    model_type: [Tree]
+    model_params:
+      include_phases: [False] # is controlled manually inside the model runs
+      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
+      perfect_phase_info: [False] # is controlled manually inside the model runs
+      perfect_activity_info: [False] # is controlled manually inside the model runs
+      task: ['rtp']
+      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
+      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      seq_len: [3, 5, 10]
+      pred_model: ['DecisionTree']
+      min_prefix_len: [2]
+      predict_phase: [True, False] # is used for training as well (target vector includes phase if True)
+      phase_as_feature: [True, False] # this controls if we have local phase-wise models (False) or a global model (True)

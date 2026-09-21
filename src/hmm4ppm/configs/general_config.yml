@@ -1,0 +1,7 @@
+dataset: [Helpdesk, BPI2013_Closed, EnvPermit, Sepsis, BPI2012_WC, BPI2012_C, BPI2012_W, BPI2013_Incidents, BPI2012_Full]
+model_config: test_config
+cv_folds: 1
+ncores: 1
+train_pct: 0.8 # if cv_folds: 1 train_pct specifies the percentage of cases used for training. remaining cases are the test cases
+val_pct: 0.2 # share of the training set that is used for validation purposes (not the final training set)
+seed: 42

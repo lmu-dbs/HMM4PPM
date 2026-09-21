@@ -1,0 +1,135 @@
+Helpdesk: # https://data.4tu.nl/articles/dataset/Dataset_belonging_to_the_help_desk_log_of_an_Italian_Company/12675977
+  file_name: 'helpdesk.csv'
+  case_identifier: 'Case ID'
+  activity_identifier: 'Activity'
+  resource_identifier: 'Resource'
+  timestamp_identifier: 'Complete Timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['Resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2012: # https://data.4tu.nl/articles/_/12689204/1 (needed for dataset conversions)
+  file_name: 'BPI2012.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+
+BPI2012_Full: # https://data.4tu.nl/articles/_/12689204/1 + BPI2012_conversions.py
+  file_name: 'BPI2012_Full.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2012_W: # https://data.4tu.nl/articles/_/12689204/1 + BPI2012_conversions.py
+  file_name: 'BPI2012_W.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2012_C: # https://data.4tu.nl/articles/_/12689204/1 + BPI2012_conversions.py
+  file_name: 'BPI2012_C.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2012_WC: # https://data.4tu.nl/articles/_/12689204/1 + BPI2012_conversions.py
+  file_name: 'BPI2012_WC.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2013_Closed: # https://data.4tu.nl/datasets/1987a2a6-9f5b-4b14-8d26-ab7056b17929
+  file_name: 'BPI2013_closed.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'lifecycle:transition'
+  resource_identifier: 'org:role'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:role']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+BPI2013_Incidents: # https://data.4tu.nl/datasets/0fc5c579-e544-4fab-9143-fab1f5192432
+  file_name: 'BPI2013_incidents.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'lifecycle:transition'
+  resource_identifier: 'org:role'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:role']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+
+Sepsis: # https://data.4tu.nl/articles/_/12707639/1
+  file_name: 'sepsis.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:group'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:group']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
+  read_params:
+    na_values: []
+    keep_default_na: False
+
+EnvPermit: # https://data.4tu.nl/datasets/2db2e3c1-9499-4699-9098-1a28c15a5913/2
+  file_name: 'env_permit.csv'
+  case_identifier: 'case:concept:name'
+  activity_identifier: 'concept:name'
+  resource_identifier: 'org:resource'
+  timestamp_identifier: 'time:timestamp'
+  transform_params:
+    transform_cols_PowerTransformer: []
+  encoding_params:
+    encoding_cols_OrdinalEncoder: ['org:resource']
+    encoding_cols_StandardScaler: []
+    encoding_cols_GammaScaler: []
+    encoding_cols_ZeroInflatedGammaScaler: ['tsle', 'tscs']
