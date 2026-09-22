@@ -246,11 +246,9 @@ def main():
 
                 processhhmm, hmm_predictor, annotated_dataset = perform_loaded_run_train(best_hmm, times, export_path=os.path.join(PARAMS_EXP_DIR, dataset))
 
-                intermediate_calc_times = {'hmm_prep_duration': times['hmm_prep_time_end'] - times['hmm_prep_time_start'], 
-                                        'hmm_train_duration': times['fitting_time'] - times['hmm_prep_time_end'], 
-                                        'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
-                                        'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
-                                        }
+                intermediate_calc_times = {'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
+                                           'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
+                                           }
 
                 ppm_model_config['model_params'].update({'model_type': ppm_model_config['model_type']})
                 
@@ -407,7 +405,7 @@ def perform_loaded_run_train(processhhmm, times, export_path):
     
     times['annotation_time_end'] = time.perf_counter()
     
-    logger.info("data annotation complete")
+    logger.info("Data annotation complete")
     
     return processhhmm, predictor, annotated_dataset
 
