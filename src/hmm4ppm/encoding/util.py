@@ -122,6 +122,9 @@ class ZeroInflatedGammaScaler():
         self.means = None
         self.n_features_in = None
         
+        self.mins = None
+        self.maxs = None
+        
     def _reset(self):
         self.means = None
         self.n_features_in = None
@@ -160,11 +163,16 @@ class ZeroInflatedGammaScaler():
         
         n_features = validated_data.shape[1]
         
+        mins = validated_data.min(axis=0)
+        maxs = validated_data.max(axis=0)
+        
         # means_with_zeros = validated_data.mean(axis=0)
         means_without_zeros = validated_data[validated_data > 0].mean(axis=0)
         
         self.n_features_in = n_features
         self.means = means_without_zeros
+        self.mins = mins
+        self.maxs = maxs
     
     def transform(self, X):
         

@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from ..models.hmm import UnivariateHMM, MultivariateHMM
+from ..models.hmm import MultivariateHMM
 import torch
 from torch.special import logsumexp
 import pandas as pd
@@ -14,7 +14,7 @@ import pyro.distributions as dist
 
 from typing import Literal
 
-from .posterior_distributions import inspect_posterior_distribution, inspect_state_paths
+from .posterior_distributions import inspect_posterior_distribution, inspect_state_paths, inspect_all_posterior_distributions, inspect_all_posterior_distributions_phases_only
 
 from ..util.logging import init_logging
 logger = init_logging(__name__, 'prediction.log')
@@ -96,12 +96,7 @@ class HMMPredictor():
     
         assert isinstance(self.predicted_sequences, torch.Tensor), "predicted sequences need to be provided as batched tensor of predicted sequences (possibly num_samples > 1)"
         
-        # code for redone (univariate) prediction_hmm (with usage of plates)
-        if self.model.model == UnivariateHMM:
-            
-            raise NotImplementedError("UnivariateHMM is deprecated and downstream functions will not be implemented")
-        
-        elif self.model.model == MultivariateHMM:
+        if self.model.model == MultivariateHMM:
 
             assert self.predicted_sequences.dim() == 4, "shape of predictions needs to be 3-dimensional (with shape [num_samples, num_sequences, n_channels, prediction_length]), even if num_samples = 1"
             
@@ -111,6 +106,8 @@ class HMMPredictor():
             agg_emissions = [[_pick_mode(self.predicted_sequences[:, seq, 0, step]) 
                                 for step in range(num_steps)] 
                                 for seq in range(num_sequences)]
+        else:
+            raise NotImplementedError()
             
         return agg_emissions
         
@@ -119,19 +116,7 @@ class HMMPredictor():
         assert isinstance(self.predicted_sequences, list), "predicted sequences need to be provided as list of predicted sequences (possibly num_samples > 1)"
         formatted_preds = list()
 
-        # code for redone (univariate) prediction_hmm (with usage of plates)
-        if self.model.model == UnivariateHMM:
-            
-            for pred_seq in self.predicted_sequences:
-                assert pred_seq.dim() == 2, "shape of predictions needs to be 2-dimensional (with shape [num_samples, prediction_length]), even if num_samples = 1"
-
-                if aggregate_samples:
-                    agg_emissions = [_pick_mode(pred_seq[:, pred_idx], report_prob=uncertainty) for pred_idx in range(pred_seq.shape[-1])]
-                    formatted_preds.append(agg_emissions)
-                elif not aggregate_samples and pred_seq.shape[0] > 1:
-                    raise NotImplementedError("keeping all samples for num_samples > 1 not yet implemented!")
-        
-        elif self.model.model == MultivariateHMM:
+        if self.model.model == MultivariateHMM:
             
             for pred_seq in self.predicted_sequences:
                 assert pred_seq.dim() == 3, "shape of predictions needs to be 3-dimensional (with shape [n_channels, num_samples, prediction_length]), even if num_samples = 1"
@@ -141,6 +126,9 @@ class HMMPredictor():
                     formatted_preds.append(agg_emissions)
                 elif not aggregate_samples and pred_seq.shape[0] > 1:
                     raise NotImplementedError("keeping all samples for num_samples > 1 not yet implemented!")
+                
+        else:
+            raise NotImplementedError()
 
         self.predicted_future_sequences = formatted_preds
 
@@ -444,6 +432,50 @@ class HMMPredictor():
                 
         inspect_posterior_distribution(self.model, channel=channel, emission_type=emission_type, alpha_probs=alpha, mode=data_mode, num_samples=num_samples)
 
+    def complete_posterior_predictive_check(self, channels: str, channel_labels: str, emission_types: str, data_mode: Literal['train','test'], num_samples: int = int(1e5)):
+        full_sequence_indices_test = get_full_info_prefix_indices(self.model.model_args_test['lengths'])
+        full_sequence_indices_val = get_full_info_prefix_indices(self.model.model_args_val['lengths'])
+        
+        if self.model.train_args['log_prob']:
+            alpha_probs_test = [self.filtered_sequences_test[i].exp() for i in full_sequence_indices_test]
+            alpha_probs_train = [a.exp() for a in self.filtered_sequences_train]
+            alpha_probs_val = [a.exp() for a in self.filtered_sequences_val]
+        else:
+            alpha_probs_test = [self.filtered_sequences_test[i] for i in full_sequence_indices_test]
+            alpha_probs_val = [self.filtered_sequences_val[i] for i in full_sequence_indices_val]
+            alpha_probs_train = self.filtered_sequences_train
+        
+        if data_mode=='train':
+            alpha = alpha_probs_train
+        elif data_mode=='test':
+            alpha = alpha_probs_test
+        elif data_mode=='val':
+            alpha = alpha_probs_val
+        
+        inspect_all_posterior_distributions(self.model, channels=channels, channel_labels=channel_labels, emission_types=emission_types, alpha_probs=alpha, mode=data_mode, num_samples=num_samples)
+    
+    def complete_posterior_predictive_check_phases_only(self, channels: str, channel_labels: str, emission_types: str, data_mode: Literal['train','test'], num_samples: int = int(1e5), pred_model = None):
+        full_sequence_indices_test = get_full_info_prefix_indices(self.model.model_args_test['lengths'])
+        full_sequence_indices_val = get_full_info_prefix_indices(self.model.model_args_val['lengths'])
+
+        if self.model.train_args['log_prob']:
+            alpha_probs_test = [self.filtered_sequences_test[i].exp() for i in full_sequence_indices_test]
+            alpha_probs_train = [a.exp() for a in self.filtered_sequences_train]
+            alpha_probs_val = [a.exp() for a in self.filtered_sequences_val]
+        else:
+            alpha_probs_test = [self.filtered_sequences_test[i] for i in full_sequence_indices_test]
+            alpha_probs_val = [self.filtered_sequences_val[i] for i in full_sequence_indices_val]
+            alpha_probs_train = self.filtered_sequences_train
+
+        if data_mode=='train':
+            alpha = alpha_probs_train
+        elif data_mode=='test':
+            alpha = alpha_probs_test
+        elif data_mode=='val':
+            alpha = alpha_probs_val
+
+        inspect_all_posterior_distributions_phases_only(self.model, channels=channels, channel_labels=channel_labels, emission_types=emission_types, alpha_probs=alpha, mode=data_mode, num_samples=num_samples, pred_model=pred_model)
+        
     def plot_paths(self, data_mode: Literal['train','test'], path_mode: Literal['all', 'random', 'seq_id'] = 'random', seq_id: int = None, ma_horizon: int = None, only_past: bool = True, labels: bool = True, print_trace: bool = True):
         
         full_sequence_indices_test = get_full_info_prefix_indices(self.model.model_args_test['lengths'])

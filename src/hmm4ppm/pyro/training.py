@@ -16,14 +16,14 @@ from tqdm import tqdm
 
 from pyro.optim import Adam
 from pyro.infer import SVI, TraceEnum_ELBO
-from pyro.infer.autoguide import AutoDelta, AutoNormal, AutoDiscreteParallel, AutoGuideList, init_to_mean
+from pyro.infer.autoguide import AutoDelta, init_to_mean
 from pyro import poutine
 from sklearn.preprocessing import OrdinalEncoder
 from ..encoding.util import StrictlyNonNegativeOrdinalEncoder, GammaScaler, ZeroInflatedGammaScaler
 
 import matplotlib.pyplot as plt
 
-from ..models.hmm import PyroHMM, UnivariateHMM, MultivariateHMM
+from ..models.hmm import PyroHMM, MultivariateHMM
 from ..data.sequencedata import SequenceData
 
 from ..util.logging import init_logging
@@ -74,7 +74,7 @@ class HMMTrainer():
         self._padding_size = 1
         
         if export_path is not None:
-            self.param_hash, serialized = hash_param_dict({k: v for k, v in train_args.items() if k not in ['reuse_fitted', 'max_pred_length', 'num_samples']})
+            self.param_hash, serialized = hash_param_dict({k: v for k, v in train_args.items() if k not in ['reuse_fitted', 'max_pred_length', 'num_samples', 'cuda']})
             save_hash_dict(self.param_hash, serialized, os.path.join(export_path, 'params.jsonl'))
             self.export_path = export_path
         
@@ -268,7 +268,7 @@ class HMMTrainer():
         
         model_args = dict()
 
-        if self.model in [UnivariateHMM, MultivariateHMM]:
+        if self.model in [MultivariateHMM]:
 
             # transform individual traces into padded tensor
             tensor_sequences = list()
@@ -351,7 +351,7 @@ class HMMTrainer():
 
         model_args = dict()
 
-        if self.model in [UnivariateHMM, MultivariateHMM]:
+        if self.model in [MultivariateHMM]:
 
             # transform individual traces into padded tensor
             tensor_sequences = list()

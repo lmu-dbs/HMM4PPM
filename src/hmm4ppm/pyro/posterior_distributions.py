@@ -1,7 +1,7 @@
 """Collection of methods for easy and fast posterior distribution checks for pyro HMM emissions"""
 
 import seaborn as sns
-from ..models.hmm import PyroHMM, UnivariateHHMM, MultivariateHHMM
+from ..models.hmm import PyroHMM
 import torch
 import pandas as pd
 import numpy as np
@@ -54,6 +54,128 @@ def inspect_posterior_distribution(model: PyroHMM, channel: str, emission_type: 
             hist(channel_data, params, mode=mode, num_samples=num_samples)
     else:
         raise ValueError("parameters are of unexpected class object")
+
+def inspect_all_posterior_distributions(model: PyroHMM, channels: list[str], channel_labels: list[str], emission_types: list[str], mode: Literal['train', 'test'], alpha_probs: list[torch.Tensor] = None, num_samples: int = int(1e5)):
+    # gather data for channel
+    channels_data = [gather_data(model=model, channel=channel, mode=mode) for channel in channels]
+    
+    # gather params for channel
+    all_channel_params = [gather_params(model, channel, emission_type) for channel, emission_type in zip(channels, emission_types)]
+    
+    nrows = len(channels)
+    ncols = model.train_args["hidden_dim"] + 1
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12*ncols, 6*nrows))
+    
+    axes = axes.flatten()
+    # posterior plots
+    posterior_plot_indices = [ncols*row for row in range(nrows)]
+    state_wise_index_ranges = posterior_plot_indices + [ncols*nrows]
+    state_wise_plot_indices = [list(range(state_wise_index_ranges[idx]+1, state_wise_index_ranges[idx+1]))  for idx in range(nrows)]
+    
+    state_distribution = get_state_distribution(alpha_probs, model.model_args_train['hidden_dim'])
+    
+    for channel_idx, posterior_plot_idx in enumerate(posterior_plot_indices):
+        ax = axes[posterior_plot_idx]
+        channel_data = channels_data[channel_idx]
+        emission_type = emission_types[channel_idx]
+        params = all_channel_params[channel_idx]
+        
+        if channel_idx==0:
+            state_titles = True
+        else:
+            state_titles = False
+            
+        axis_labels = True
+        
+        current_channel_label = channel_labels[channel_idx]
+        
+        if emission_type in ['continuous', 'gamma', 'zeroinflatedgamma']: # channel is continuous (normal distribution with loc and scale, gamma with alpha and theta, zeroinflatedgamma with zerozero, alphazero, thetazero)
+            kde_subplots(channel_data, emission_type, params, mode=mode, state_distribution=state_distribution, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels, channel_labels=current_channel_label)
+        elif emission_type=='discrete':
+            hist_subplots(channel_data, params, mode=mode, state_distribution=state_distribution, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels, channel_labels=current_channel_label)
+        else:
+            raise ValueError("parameters are of unexpected class object")
+        
+    for channel_idx, channel_state_wise_plot_indices in enumerate(state_wise_plot_indices):
+        ax = [axes[idx] for idx in channel_state_wise_plot_indices]
+        channel_data = channels_data[channel_idx]
+        emission_type = emission_types[channel_idx]
+        params = all_channel_params[channel_idx]    
+        
+        if channel_idx==0:
+            state_titles = True
+        else:
+            state_titles = False
+        
+        axis_labels = False
+        
+        channel_labels = None
+            
+        if emission_type in ['continuous', 'gamma', 'zeroinflatedgamma']: # channel is continuous (normal distribution with loc and scale, gamma with alpha and theta, zeroinflatedgamma with zerozero, alphazero, thetazero)
+            kde_subplots(channel_data, emission_type, params, mode=mode, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels)
+        elif emission_type=='discrete':
+            hist_subplots(channel_data, params, mode=mode, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels)
+        else:
+            raise ValueError("parameters are of unexpected class object")
+    
+            
+    plt.tight_layout()
+
+def inspect_all_posterior_distributions_phases_only(model: PyroHMM, channels: list[str], channel_labels: list[str], emission_types: list[str], mode: Literal['train', 'test'], alpha_probs: list[torch.Tensor] = None, num_samples: int = int(1e5), pred_model = None):
+    # gather data for channel
+    channels_data = [gather_data(model=model, channel=channel, mode=mode) for channel in channels]
+    
+    # gather params for channel
+    all_channel_params = [gather_params(model, channel, emission_type) for channel, emission_type in zip(channels, emission_types)]
+    
+    nrows = model.train_args["hidden_dim"]
+    ncols = len(channels)
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12*ncols, 5*nrows))
+    
+    axes = axes.flatten()
+    # posterior plots
+    row_start_indices = [ncols*row for row in range(nrows)]
+    # state_wise_index_ranges = row_start_indices + [ncols*nrows]
+    state_wise_plot_indices = [[_ + increment for _ in row_start_indices] for increment in range(ncols)]
+    
+    state_distribution = get_state_distribution(alpha_probs, model.model_args_train['hidden_dim'])
+    
+    for channel_idx, channel_state_wise_plot_indices in enumerate(state_wise_plot_indices):
+        ax = [axes[idx] for idx in channel_state_wise_plot_indices]
+        channel_data = channels_data[channel_idx]
+        emission_type = emission_types[channel_idx]
+        params = all_channel_params[channel_idx]    
+        
+        if channel_idx==0:
+            state_titles = True
+        else:
+            state_titles = False
+        
+        if channel_idx==0:
+            axis_labels = True
+        else:
+            axis_labels = False
+            
+        if emission_type in ['continuous', 'gamma', 'zeroinflatedgamma']: # channel is continuous (normal distribution with loc and scale, gamma with alpha and theta, zeroinflatedgamma with zerozero, alphazero, thetazero)
+            kde_subplots(channel_data, emission_type, params, mode=mode, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels, pred_model=pred_model, channel_labels=channel_labels[channel_idx])
+        elif emission_type=='discrete':
+            hist_subplots(channel_data, params, mode=mode, num_samples=num_samples, ax=ax, state_titles=state_titles, axis_labels=axis_labels, pred_model=pred_model, channel_labels=channel_labels[channel_idx])
+        else:
+            raise ValueError("parameters are of unexpected class object")
+        
+    # for channels in horizontal direction
+    fig.set_size_inches(8, 6)
+    for ax in fig.axes:
+        ax.tick_params(labelsize=8)
+        ax.xaxis.label.set_fontsize(11)
+        ax.yaxis.label.set_fontsize(11)
+        ax.title.set_fontsize(12)       
+    fig.subplots_adjust(wspace=5)
+    fig.tight_layout(pad=0.0, w_pad=0.5, h_pad=-0.2)
+    fig.show()
+    fig.savefig("phase_posterior_distributions_BPI2012_WC_5_phases.png")
 
 def inspect_state_paths(alpha_probs: list[torch.Tensor], sequences: torch.Tensor, lengths : torch.Tensor, mode: Literal['all', 'random', 'seq_id'] = 'random', seq_id: int = None, ma_horizon: int = None, only_past: bool = True, labels: bool = True, print_trace: bool = True):
     
@@ -215,6 +337,137 @@ def kde(channel_data: pd.DataFrame, emission_type: str, params: dict, mode: Lite
         plt.tight_layout()
         plt.show()
     
+def kde_subplots(channel_data: pd.DataFrame, emission_type: str, params: dict, mode: Literal['train', 'test'], state_distribution: torch.Tensor = None, num_samples: int = int(1e5), ax = None, state_titles: bool = False, axis_labels: bool = False, channel_labels: list[str]|None = None, pred_model=None):
+
+    channel_identifier = channel_data.name
+    if pred_model is not None:
+        if emission_type=='continuous':
+            enc_name = 'StandardScaler'
+        elif emission_type=='gamma':
+            enc_name = 'GammaScaler'
+        elif emission_type=='zeroinflatedgamma':
+            enc_name = 'ZeroInflatedGammaScaler'
+        channel_encoder, encoded_names = pred_model.data_train.encoders[enc_name]
+        
+        if enc_name =='ZeroInflatedGammaScaler':
+            raw_min_val = channel_encoder.mins[encoded_names.index(channel_identifier)]
+            raw_max_val = channel_encoder.maxs[encoded_names.index(channel_identifier)]
+        else:
+            raise NotImplementedError('raw min/max ranges only implemented for ZeroInflatedGammaScaler')
+    
+    else:
+        raw_min_val = None
+        raw_max_val = None
+
+    if state_distribution is not None:
+        col_true = '#0394fc' if mode=='train' else '#e0401f'
+        col_posterior = '#c1d41e' if mode=='train' else '#1bbf6a'
+        
+        if emission_type=='continuous':
+            n_states = params['loc'].size()[0]
+        elif emission_type=='gamma':
+            n_states = params['alpha'].size()[0]
+        elif emission_type=='zeroinflatedgamma':
+            n_states = params['alphazero'].size()[0]
+        palette = sns.color_palette("cubehelix", n_colors=n_states)
+
+        all_kde_data = list()
+        for state_id in range(n_states):
+            state_num_samples = int(num_samples*state_distribution[state_id])
+            
+            if state_num_samples > 0:
+                if emission_type=='continuous':
+                    distribution_data = np.random.normal(loc=params['loc'][state_id], scale=params['scale'][state_id], size=(state_num_samples, 1)).flatten()
+                elif emission_type=='gamma':
+                    distribution_data = np.random.gamma(shape=params['alpha'][state_id], scale=1/params['theta'][state_id], size=(state_num_samples, 1)).flatten()
+                elif emission_type=='zeroinflatedgamma':
+                    n_zeros = int(state_num_samples * params['zerozero'][state_id])
+                    n_non_zeros = state_num_samples - n_zeros
+                    zero_distribution_data = np.zeros((n_zeros, 1)).flatten()
+                    non_zero_distribution_data = np.random.gamma(shape=params['alphazero'][state_id], scale=1/params['thetazero'][state_id], size=(n_non_zeros, 1)).flatten()
+                    distribution_data = np.concatenate((zero_distribution_data, non_zero_distribution_data))
+                all_kde_data.append(distribution_data)
+
+
+        all_kde_data = torch.concat([torch.tensor(d) for d in all_kde_data])
+
+        combined_data = pd.concat((pd.DataFrame.from_dict({'val': channel_data, 'type':'true'}), pd.DataFrame.from_dict({'val': all_kde_data, 'type':'posterior'})), axis=0)
+        
+        sns.kdeplot(data=combined_data, x='val', hue='type', palette=[col_true, col_posterior], common_norm=False, 
+                    # fill=True, 
+                    ax=ax) # global channel distribution
+        
+        if state_titles:
+            ax.set_title(f"Posterior distribution")
+            
+        if not axis_labels:
+            ax.set_ylabel("")
+        
+        if channel_labels is not None:
+            ax.set_ylabel(f"Density\n{channel_labels}")
+        
+        ax.get_legend().set_title(None)
+        
+        return combined_data
+    
+    else:
+
+        # other plot for xlim/ylim
+        fig, other_ax = plt.subplots(figsize=(12, 6))
+        if emission_type=='continuous':
+            n_states = params['loc'].size()[0]
+        elif emission_type=='gamma':
+            n_states = params['alpha'].size()[0]
+        elif emission_type=='zeroinflatedgamma':
+            n_states = params['alphazero'].size()[0]
+        palette = sns.color_palette("cubehelix", n_colors=n_states)
+
+        sns.kdeplot(data=channel_data, color='black', 
+                    # fill=True, 
+                    ax=other_ax,
+                    ) # global channel distribution
+
+        global_xlim = other_ax.get_xlim()
+        global_ylim = other_ax.get_ylim()
+
+        for state_id in range(n_states):
+            if emission_type=='continuous':
+                distribution_data = np.random.normal(loc=params['loc'][state_id], scale=params['scale'][state_id], size=(num_samples, 1)).flatten()
+            elif emission_type=='gamma':
+                distribution_data = np.random.gamma(shape=params['alpha'][state_id], scale=1/params['theta'][state_id], size=(num_samples, 1)).flatten()
+            elif emission_type=='zeroinflatedgamma':
+                n_zeros = int(num_samples * params['zerozero'][state_id])
+                n_non_zeros = num_samples - n_zeros
+                zero_distribution_data = np.zeros((n_zeros, 1)).flatten()
+                non_zero_distribution_data = np.random.gamma(shape=params['alphazero'][state_id], scale=1/params['thetazero'][state_id], size=(n_non_zeros, 1)).flatten()
+                distribution_data = np.concatenate((zero_distribution_data, non_zero_distribution_data))
+            sns.kdeplot(data=distribution_data, color=palette[state_id], label=f"Phase {state_id}", 
+                        fill=True, 
+                        ax=ax[state_id])
+            
+            ax[state_id].set_xlim(global_xlim)
+            ax[state_id].set_ylim(global_ylim)
+                    
+            if state_titles:
+                ax[state_id].set_ylabel(f"Phase {state_id}")
+            
+            if not axis_labels:
+                ax[state_id].set_ylabel("")
+                
+            if channel_labels is not None:
+                if state_id == 0:
+                    ax[state_id].set_title(channel_labels)
+            
+            if raw_max_val is not None and raw_min_val is not None:
+                min_val = channel_data.min()
+                max_val = channel_data.max()
+                positions = np.linspace(min_val, max_val, 4)
+                ax[state_id].set_xticks(positions)
+                raw_labels = np.linspace(raw_min_val, raw_max_val, 4) / 60/60/24 # CAUTION - this is formatting continuous channel data as temporal information (format from seconds to days)
+                ax[state_id].set_xticklabels([f"{l:.2f}" for l in raw_labels])
+        
+        return None
+
 def posterior_cont(emission_type: str, params: dict, state_distribution: torch.Tensor = None, num_samples: int = int(1e5)):
 
     if emission_type=='continuous':
@@ -303,6 +556,129 @@ def hist(channel_data: pd.DataFrame, params: torch.Tensor, mode: Literal['train'
             plt.title(f"State {state_id} - Channel {channel_data.name}")
             plt.tight_layout()
             plt.show()
+            
+def hist_subplots(channel_data: pd.DataFrame, params: torch.Tensor, mode: Literal['train', 'test'], state_distribution: torch.Tensor = None, num_samples: int = int(1e5), ax = None, state_titles: bool = False, axis_labels: bool = False, channel_labels: list[str]|None = None, pred_model = None):
+
+    # CAUTION - only works for one discrete channel (else we would need all discrete channel data to get the categories)
+    channel_identifier = channel_data.name
+    if pred_model is not None:
+        if channel_identifier == pred_model.data_train.activity_identifier:
+            channel_encoder = pred_model.data_train.act_encoder
+        else:
+            channel_encoder = pred_model.data_train.encoders['OrdinalEncoder'][0]
+        order = channel_encoder.categories_[0].tolist()
+        order_reordered = ['MISSING', 'UNSEEN'] + ['START'] + [_ for _ in order if _ not in ['START', 'END']] + ['END']
+        
+        channel_data = channel_encoder.inverse_transform(np.array(channel_data).reshape(-1, 1))
+        channel_data = pd.Categorical(pd.DataFrame(channel_data).iloc(axis=1)[0], categories=order_reordered, ordered=True)
+        
+    else:
+        channel_encoder = None
+
+    if state_distribution is not None:
+        col_true = '#0394fc' if mode=='train' else '#e0401f'
+        col_posterior = '#c1d41e' if mode=='train' else '#1bbf6a'        
+                
+        n_states = params.size()[0]
+        palette = sns.color_palette("cubehelix", n_colors=n_states)
+
+        all_hist_data = list()
+
+        for state_id in range(n_states):
+            state_probs = params[state_id, :]
+            state_num_samples = int(num_samples*state_distribution[state_id])
+            
+            if state_num_samples > 0:
+                hist_data = torch.multinomial(state_probs, num_samples=state_num_samples, replacement=True)
+                all_hist_data.append(hist_data)
+
+
+        all_hist_data = pd.Series(torch.concat(all_hist_data))
+        
+        combined_data = pd.concat((pd.DataFrame.from_dict({'cat': channel_data, 'type':'true'}), pd.DataFrame.from_dict({'cat': all_hist_data, 'type':'posterior'})), axis=0)
+        
+        sns.histplot(data=combined_data, x='cat', stat='density', hue='type', multiple='dodge', palette=[col_true, col_posterior], discrete=True, common_norm=False, shrink=0.8, ax=ax)
+        
+        if state_titles:
+            ax.set_title(f"Posterior distribution")
+            
+        if not axis_labels:
+            ax.set_ylabel("")
+        
+        if channel_labels is not None:
+            ax.set_ylabel(f"Density\n{channel_labels}")
+        
+        ax.get_legend().set_title(None)
+        
+        return combined_data
+    else:
+
+        fig, other_ax = plt.subplots(figsize=(12, 6))
+        n_states = params.size()[0]
+        palette = sns.color_palette("cubehelix", n_colors=n_states)
+        
+        try:
+            channel_data = channel_data.astype(int)
+        except ValueError:
+            pass
+        
+        sns.histplot(data=channel_data, color='black', stat='density', discrete=True) # global channel distribution
+
+        global_xlim = other_ax.get_xlim()
+        global_ylim = other_ax.get_ylim()
+
+        for state_id in range(n_states):
+            
+            state_probs = params[state_id, :]
+            hist_data = torch.multinomial(state_probs, num_samples=num_samples, replacement=True)
+            
+            if channel_encoder is not None:
+                hist_data = channel_encoder.inverse_transform(np.array(hist_data).reshape(-1, 1))
+                hist_data = pd.Categorical(pd.DataFrame(hist_data).iloc(axis=1)[0], categories=order_reordered, ordered=True)
+            
+            if len(hist_data.unique())==1:
+                val = int(hist_data.unique())
+                sns.histplot(data=hist_data, stat='density', 
+                                bins=1,
+                                binwidth=1,
+                                binrange=(val - 0.5, val + 0.5),
+                                color=palette[state_id], 
+                                label=f"Phase {state_id}", 
+                                fill=True, 
+                                ax=ax[state_id]
+                                )
+            else:
+                sns.histplot(data=hist_data, stat='density', 
+                                binwidth=1,
+                                color=palette[state_id], 
+                                label=f"Phase {state_id}", 
+                                fill=True, 
+                                ax=ax[state_id]
+                                )
+            
+            ax[state_id].set_xlim(global_xlim)
+            ax[state_id].set_ylim(0, 1)
+            
+            if state_titles:
+                ax[state_id].set_ylabel(f"Phase {state_id}")
+            
+            if not axis_labels:
+                ax[state_id].set_ylabel("")
+        
+            if channel_labels is not None:
+                if state_id == 0:
+                    ax[state_id].set_title(channel_labels)
+                
+            if channel_encoder is not None:
+            
+                label_map = {'START': 'START', 'END': 'END'}
+                ticks = ax[state_id].get_xticks()
+                current_labels = [t.get_text() for t in ax[state_id].get_xticklabels()]
+                new_labels = [label_map.get(lbl, '') for lbl in current_labels]
+            
+                ax[state_id].set_xticklabels(new_labels)
+        
+        return None
             
 def posterior_disc(params: torch.Tensor, state_distribution: torch.Tensor, num_samples: int = int(1e5)):
 

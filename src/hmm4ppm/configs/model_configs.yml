@@ -34,6 +34,29 @@ test_config: # model training parameters go here
       selection_method: ['PROB_LEN_DIST']
       weights: [null]
 
+process_models_BPI2012_WC_config:
+  phase_config:
+    model_type: [HMM]
+    model_params:
+      num_steps: [2000]
+      hidden_dim: [5]
+      markov_order: [1]
+      pad_buffer: [1.2] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
+      # filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
+      learning_rate: [0.02]
+      hmm_batch_size: [20]
+      max_pred_length: [20]
+      num_samples: [100]
+      model_name: [MultivariateHMM]
+      log_prob: [True]
+      reuse_fitted: [True]
+      mask_padded: [True]
+      alpha0: [1]
+      prior_function: [default]
+  ppm_config:
+    model_type: []
+    model_params: []
+
 hmm_training_config:
   phase_config:
     model_type: [HMM]
