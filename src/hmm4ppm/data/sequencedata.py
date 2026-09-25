@@ -484,39 +484,44 @@ class SequenceData:
             tuple[SequenceData]: training and test instances of the corresponding sequences as SequenceData objects
         """
         if cv > 1: # generate k-fold cross validation datasets
-            logger.info(f'Splitting train and test data ({1/cv*100:.0f}-{(1-(1/cv))*100:.0f} split with {cv} folds)')
+            logger.info(f'Splitting train, val and test data ({(train_pct*(1-val_pct))*100:.0f}-{(train_pct*val_pct)*100:.0f}-{(1-train_pct)*100:.0f} split with {cv} folds)')
             
-            if not train_pct == val_pct*cv:
-                val_pct = 1/cv
-                logger.warning(f"desired fold number of {cv} does not conform with val_pct={val_pct} - overriding val_pct to {1/cv}")
+            # if not train_pct == val_pct*cv:
+            #     val_pct = 1/cv
+            #     logger.warning(f"desired fold number of {cv} does not conform with val_pct={val_pct} - overriding val_pct to {1/cv}")
             
             all_ids = self.data[self.case_identifier].unique()
             np.random.shuffle(all_ids)
             
-            outer_train_ids = np.random.choice(a=all_ids, size=int(len(all_ids)*train_pct), replace=False)
-            outer_train_set = set(outer_train_ids)
-            outer_test_ids = [id for id in all_ids if id not in outer_train_set]
+            # outer_train_ids = np.random.choice(a=all_ids, size=int(len(all_ids)*train_pct), replace=False)
+            # outer_train_set = set(outer_train_ids)
+            # outer_test_ids = [id for id in all_ids if id not in outer_train_set]
             
-            outer_train_data = self.data[self.data[self.case_identifier].isin(outer_train_ids)]
-            outer_test_data = self.data[self.data[self.case_identifier].isin(outer_test_ids)]
+            # outer_train_data = self.data[self.data[self.case_identifier].isin(outer_train_ids)]
+            # outer_test_data = self.data[self.data[self.case_identifier].isin(outer_test_ids)]
             
-            outer_train_data_obj = SequenceData.from_obj(self, data=outer_train_data)
-            outer_test_data_obj = SequenceData.from_obj(self, data=outer_test_data)
+            # outer_train_data_obj = SequenceData.from_obj(self, data=outer_train_data)
+            # outer_test_data_obj = SequenceData.from_obj(self, data=outer_test_data)
             
             # split the data into cv folds
-            id_folds = [id_fold for id_fold in _batch_samples(outer_train_ids, cv)]
+            id_folds = [id_fold for id_fold in _batch_samples(all_ids, cv)]
             folds = list()
             for idf_idx in range(0, len(id_folds)):
                 test_ids = id_folds[idf_idx].tolist()
-                train_ids = list(itertools.chain(*[id_folds[i] for i in range(0, len(id_folds)) if i != idf_idx]))
+                all_train_ids = list(itertools.chain(*[id_folds[i] for i in range(0, len(id_folds)) if i != idf_idx]))
+                val_ids = np.random.choice(a=all_train_ids, size=int(len(all_train_ids)*val_pct), replace=False)
+                train_ids = [id for id in all_train_ids if id not in val_ids]
+                
                 train_data = self.data[self.data[self.case_identifier].isin(train_ids)]
+                val_data = self.data[self.data[self.case_identifier].isin(val_ids)]
                 test_data = self.data[self.data[self.case_identifier].isin(test_ids)]
 
                 train_data_obj = SequenceData.from_obj(self, data=train_data)
+                val_data_obj = SequenceData.from_obj(self, data=val_data)
                 test_data_obj = SequenceData.from_obj(self, data=test_data)
-                folds.append(tuple([train_data_obj, test_data_obj]))
+                folds.append(tuple([train_data_obj, val_data_obj, test_data_obj]))
 
-            return folds, outer_train_data_obj, outer_test_data_obj
+            return folds
         else:
             logger.info(f'Splitting train, validation and test data ({(train_pct*(1-val_pct))*100:.0f}-{(train_pct*val_pct)*100:.0f}-{(1-train_pct)*100:.0f} split)')
             all_ids = self.data[self.case_identifier].unique()

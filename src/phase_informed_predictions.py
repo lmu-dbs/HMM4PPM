@@ -49,7 +49,7 @@ def main():
     os.makedirs(PARAMS_EXP_DIR, exist_ok=True)
     os.makedirs(DATASET_EXP_DIR, exist_ok=True)
 
-    # mlflow.set_tracking_uri(mlflow_config["uri"])
+    mlflow.set_tracking_uri(mlflow_config["uri"])
     mlflow.set_experiment(mlflow_config["experiment_name"])
 
     for dataset in general_config["dataset"]:
@@ -103,13 +103,19 @@ def main():
 
         if general_config['cv_folds'] > 1:
             
+            ppm_model_config['model_params'].update({'model_type': ppm_model_config['model_type']})
+            
+            ppm_combinations_generator = param_combinations(ppm_model_config['model_params'])
+            ppm_config_combinations = [c_comb for c_comb in ppm_combinations_generator]
+            cv_hashes_ppm = [random.getrandbits(128) for _ in range(0, len(ppm_config_combinations))]
+            
             for markov_order in markov_orders:
             
                 # sample with same seeds for each markov_order to prevent leakage
                 random.seed(additional_params['seed'])
                 np.random.seed(additional_params['seed'])
             
-                folds, outer_train, outer_test = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
+                folds = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
                 times['data_prep_time'] = time.perf_counter()
             
                 # model_params = dict(zip(list(model_config.keys()), [param for param in combination]))
@@ -120,28 +126,28 @@ def main():
             
                 for fold_idx, fold in enumerate(folds):
             
-                    data_train, data_test = fold
+                    data_train, data_val, data_test = fold
                     times['run_start_time'] = time.perf_counter()
             
                     best_hmm, best_params = select_best_hmm_per_order(dataset=dataset, markov_order=markov_order, data_train=data_train, data_val=data_val, data_test=data_test, criterion=criterion, fold_idx=fold_idx)
                     fold_models.append((best_hmm, best_params))
+                    
                         
                 for fold_idx, (best_hmm, best_params) in enumerate(fold_models):
+                    
+                    data_train, data_val, data_test = folds[fold_idx]
 
+                    if best_hmm is None:
+                        logger.warning(f'No best HMM selection found for Markov order {markov_order} and fold {fold_idx} - skipping')
+                        continue
+                    
                     best_hmm.model_args_test.update(eval_args)
                     
-                    processhhmm, hmm_predictor, annotated_dataset = perform_loaded_run_train(best_hmm, times, export_path=os.path.join(PARAMS_EXP_DIR, dataset))
+                    processhhmm, hmm_predictor, annotated_dataset = perform_loaded_run_train(best_hmm, times, export_path=os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}"))
                     
-                    intermediate_calc_times = {'hmm_prep_duration': times['hmm_prep_time_end'] - times['hmm_prep_time_start'], 
-                                            'hmm_train_duration': times['fitting_time'] - times['hmm_prep_time_end'], 
-                                            'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
-                                            'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
-                                            }
-                    
-                    ppm_model_config['model_params'].update({'model_type': ppm_model_config['model_type']})
-                    
-                    ppm_combinations_generator = param_combinations(ppm_model_config['model_params'])
-                    ppm_config_combinations = [c_comb for c_comb in ppm_combinations_generator]
+                    intermediate_calc_times = {'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
+                                               'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
+                                               }
                     
                     for comb_idx, ppm_model_params in enumerate(ppm_config_combinations):
                         with mlflow.start_run():
@@ -152,7 +158,9 @@ def main():
                             mlflow.log_params(best_params)
                             mlflow.log_params(additional_params)
                             mlflow.log_params(ppm_model_params)
-                    
+                            mlflow.log_param('cv_hash_ppm', cv_hashes_ppm[comb_idx])
+                            mlflow.log_param('cv_hash_ppm_fold', f'{cv_hashes_ppm[comb_idx]}_{fold_idx}')
+                            
                             if ppm_model_params['model_type'] == 'BESTVanillaPhases':
                                 include_phases_list = [False]
                             else:
@@ -242,99 +250,104 @@ def main():
 
                 best_hmm, best_params = select_best_hmm_per_order(dataset=dataset, markov_order=markov_order, data_train=data_train, data_val=data_val, data_test=data_test, criterion=criterion)
                 
-                best_hmm.model_args_test.update(eval_args)
+                if best_hmm is None:
+                    logger.warning(f'No best HMM selection found for Markov order {markov_order} - skipping')
+                    continue
+                else:
+                    
+                    best_hmm.model_args_test.update(eval_args)
 
-                processhhmm, hmm_predictor, annotated_dataset = perform_loaded_run_train(best_hmm, times, export_path=os.path.join(PARAMS_EXP_DIR, dataset))
+                    processhhmm, hmm_predictor, annotated_dataset = perform_loaded_run_train(best_hmm, times, export_path=os.path.join(PARAMS_EXP_DIR, dataset))
 
-                intermediate_calc_times = {'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
-                                           'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
-                                           }
+                    intermediate_calc_times = {'hmm_filtering_duration': times['filtering_time_end'] - times['filtering_time_start'], 
+                                            'hmm_annotation_duration': times['annotation_time_end'] - times['annotation_time_start'], 
+                                            }
 
-                ppm_model_config['model_params'].update({'model_type': ppm_model_config['model_type']})
-                
-                ppm_combinations_generator = param_combinations(ppm_model_config['model_params'])
-                ppm_config_combinations = [c_comb for c_comb in ppm_combinations_generator]
-                
-                for comb_idx, ppm_model_params in enumerate(ppm_config_combinations):
-                    with mlflow.start_run():
-                        
-                        mlflow.log_metrics(intermediate_calc_times)
-                        
-                        # log model params
-                        mlflow.log_params(best_params)
-                        mlflow.log_params(additional_params)
-                        mlflow.log_params(ppm_model_params)
-                        
-                        if ppm_model_params['model_type'] == 'BESTVanillaPhases':
-                            include_phases_list = [False]
-                        else:
-                            include_phases_list = [True, False]
-                        
-                        for include_phases in include_phases_list:
+                    ppm_model_config['model_params'].update({'model_type': ppm_model_config['model_type']})
+                    
+                    ppm_combinations_generator = param_combinations(ppm_model_config['model_params'])
+                    ppm_config_combinations = [c_comb for c_comb in ppm_combinations_generator]
+                    
+                    for comb_idx, ppm_model_params in enumerate(ppm_config_combinations):
+                        with mlflow.start_run():
                             
-                            ppm_model_params['include_phases'] = include_phases
+                            mlflow.log_metrics(intermediate_calc_times)
                             
-                            data_train_, data_val_, data_test_ = copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test)
-                        
-                            ppm_model = perform_run_train_ppm(ppm_model_params, general_config, data_train_, data_val_, data_test_, annotated_dataset, processhhmm, hmm_predictor, times, additional_params=additional_params)
+                            # log model params
+                            mlflow.log_params(best_params)
+                            mlflow.log_params(additional_params)
+                            mlflow.log_params(ppm_model_params)
                             
-                            mlflow.log_metric(f"ppm_fitting_duration{'_phases' if include_phases else ''}", times['ppm_fitting_end_time'] - times['ppm_fitting_start_time'])
+                            if ppm_model_params['model_type'] == 'BESTVanillaPhases':
+                                include_phases_list = [False]
+                            else:
+                                include_phases_list = [True, False]
                             
-                            if ppm_model_params['model_type'] == 'LSTM':
-                                mlflow.log_metric(f"epochs_trained{'_phases' if include_phases else ''}", ppm_model.trainer.epochs_trained)
+                            for include_phases in include_phases_list:
+                                
+                                ppm_model_params['include_phases'] = include_phases
+                                
+                                data_train_, data_val_, data_test_ = copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test)
                             
-                            run_log_params_metrics = {'params': dict(),
-                                                    'metrics': dict()}
-                            if include_phases:
-                                model_params_eval_list = [
-                                    {'perfect_activity_info': False,
-                                    'use_hmm_phase_filtering': False,
-                                    'include_phases': include_phases,
-                                    'perfect_phase_info': False,
-                                    },
-                                    ]
+                                ppm_model = perform_run_train_ppm(ppm_model_params, general_config, data_train_, data_val_, data_test_, annotated_dataset, processhhmm, hmm_predictor, times, additional_params=additional_params)
+                                
+                                mlflow.log_metric(f"ppm_fitting_duration{'_phases' if include_phases else ''}", times['ppm_fitting_end_time'] - times['ppm_fitting_start_time'])
                                 
                                 if ppm_model_params['model_type'] == 'LSTM':
-                                    model_params_eval_list.append({'perfect_activity_info': False, 
-                                                                    'use_hmm_phase_filtering': True, 
-                                                                    'include_phases': include_phases, 
-                                                                    'perfect_phase_info': False,
-                                                                    })
-                            else:
-                                model_params_eval_list = [
-                                    {'perfect_activity_info': False,
-                                    'use_hmm_phase_filtering': False,
-                                    'include_phases': include_phases,
-                                    'perfect_phase_info': False,
-                                    },
-                                    ]
+                                    mlflow.log_metric(f"epochs_trained{'_phases' if include_phases else ''}", ppm_model.trainer.epochs_trained)
                                 
-                            
-                            
-                            for model_params_eval in model_params_eval_list:
+                                run_log_params_metrics = {'params': dict(),
+                                                        'metrics': dict()}
+                                if include_phases:
+                                    model_params_eval_list = [
+                                        {'perfect_activity_info': False,
+                                        'use_hmm_phase_filtering': False,
+                                        'include_phases': include_phases,
+                                        'perfect_phase_info': False,
+                                        },
+                                        ]
+                                    
+                                    if ppm_model_params['model_type'] == 'LSTM':
+                                        model_params_eval_list.append({'perfect_activity_info': False, 
+                                                                        'use_hmm_phase_filtering': True, 
+                                                                        'include_phases': include_phases, 
+                                                                        'perfect_phase_info': False,
+                                                                        })
+                                else:
+                                    model_params_eval_list = [
+                                        {'perfect_activity_info': False,
+                                        'use_hmm_phase_filtering': False,
+                                        'include_phases': include_phases,
+                                        'perfect_phase_info': False,
+                                        },
+                                        ]
+                                    
                                 
-                                remaining_model_params = {k: v for k, v in ppm_model_params.items() if k not in ['perfect_activity_info',
-                                                                                                                'use_hmm_phase_filtering',
-                                                                                                                'include_phases',
-                                                                                                                'perfect_phase_info']}
                                 
-                                model_params_eval.update(remaining_model_params)
-                                
-                                logger.info(f"Results for dataset {general_config.get('dataset')} (include phases: {include_phases}, hmm phase filtering: {model_params_eval['use_hmm_phase_filtering']}, perfect phase info: {model_params_eval['perfect_phase_info']}, perfect activity info: {model_params_eval['perfect_activity_info']}")
-                                perform_run_test_ppm(ppm_model, model_params_eval, general_config, times, run_log_params_metrics)
-                                
-                                # logging final times
-                                final_calc_times = {f"ppm_prediction_duration{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": times['prediction_ppm_end_time'] - times['prediction_ppm_start_time'], 
-                                                    f"ppm_evaluation_duration{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": times['ppm_evaluation_end_time'] - times['ppm_evaluation_start_time'], 
-                                                    }
-                                
-                                mlflow.log_metrics(final_calc_times)
-                                
-                                # logging params and metrics
-                                recoded_params = {f"{k}{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": v for k, v in run_log_params_metrics['params'].items()}
-                                recoded_metrics = {f"{k}{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": v for k, v in run_log_params_metrics['metrics'].items()}
-                                mlflow.log_params(recoded_params)
-                                mlflow.log_metrics(recoded_metrics)
+                                for model_params_eval in model_params_eval_list:
+                                    
+                                    remaining_model_params = {k: v for k, v in ppm_model_params.items() if k not in ['perfect_activity_info',
+                                                                                                                    'use_hmm_phase_filtering',
+                                                                                                                    'include_phases',
+                                                                                                                    'perfect_phase_info']}
+                                    
+                                    model_params_eval.update(remaining_model_params)
+                                    
+                                    logger.info(f"Results for dataset {general_config.get('dataset')} (include phases: {include_phases}, hmm phase filtering: {model_params_eval['use_hmm_phase_filtering']}, perfect phase info: {model_params_eval['perfect_phase_info']}, perfect activity info: {model_params_eval['perfect_activity_info']}")
+                                    perform_run_test_ppm(ppm_model, model_params_eval, general_config, times, run_log_params_metrics)
+                                    
+                                    # logging final times
+                                    final_calc_times = {f"ppm_prediction_duration{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": times['prediction_ppm_end_time'] - times['prediction_ppm_start_time'], 
+                                                        f"ppm_evaluation_duration{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": times['ppm_evaluation_end_time'] - times['ppm_evaluation_start_time'], 
+                                                        }
+                                    
+                                    mlflow.log_metrics(final_calc_times)
+                                    
+                                    # logging params and metrics
+                                    recoded_params = {f"{k}{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": v for k, v in run_log_params_metrics['params'].items()}
+                                    recoded_metrics = {f"{k}{'_phases' if include_phases else ''}{'_hmm' if model_params_eval['use_hmm_phase_filtering'] else ''}": v for k, v in run_log_params_metrics['metrics'].items()}
+                                    mlflow.log_params(recoded_params)
+                                    mlflow.log_metrics(recoded_metrics)
                         
                 logger.info("All done!")
 
@@ -519,10 +532,11 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
     
     if fold_idx is not None:
         param_dict_path = os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}", 'params.jsonl')
+        best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}", f'best_params_{criterion}.jsonl')
     else:
         param_dict_path = os.path.join(PARAMS_EXP_DIR, dataset, 'params.jsonl')
+        best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f'best_params_{criterion}.jsonl')
         
-    best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f'best_params_{criterion}.jsonl')
     
     try:
         best_params_slug_dict = {}
@@ -544,7 +558,7 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
         best_params = None
         
     if best_params is not None and best_param_slug is not None:
-        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test)
+        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test, fold_idx=fold_idx)
     else:
     
         param_dict = {}
@@ -564,65 +578,70 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
         # sort params by hidden_dim (ascending) - we want to pick highest loglik with lowest amount of states
         param_dict = {k: v for k, v in sorted(param_dict.items(), key=lambda x: x[1]['hidden_dim']) if v['hidden_dim'] >= 3}
         
-        for param_idx, (param_slug, params) in enumerate(param_dict.items()):
-        
-            loaded_hmm = load_trained_hmm(params, param_slug, dataset, copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test))
+        if len(param_dict) > 0:
+            for param_idx, (param_slug, params) in enumerate(param_dict.items()):
             
-            # hmms.append(loaded_hmm)
-            slugs.append(param_slug)
-        
-            # calculate model ranking criterion
+                loaded_hmm = load_trained_hmm(params, param_slug, dataset, copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test))
+                
+                # hmms.append(loaded_hmm)
+                slugs.append(param_slug)
             
-            if criterion=='loglik':
-            
-                logger.info(f"Calculating log-likelihood for HMM {param_idx + 1} of {len(param_dict)}...")
+                # calculate model ranking criterion
                 
-                loglik = calc_loglik(loaded_hmm)
+                if criterion=='loglik':
                 
-                logger.info(f"Log-likelihood calculated: {loglik}")
-                criterion_values.append(loglik)
-            elif criterion=='wasserstein':
-                
-                logger.info(f"Calculating alpha probabilities (val) for HMM {param_idx + 1} of {len(param_dict)}...")
-                
-                loaded_hmm_predictor = HMMPredictor(loaded_hmm, pred_args={})
-                
-                loaded_hmm_predictor.filter_val(n_batches=5)
-                
-                full_sequence_indices_val = get_full_info_prefix_indices(loaded_hmm_predictor.model.model_args_val['lengths'])
-                
-                if loaded_hmm.train_args['log_prob']:
-                    alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i].exp() for i in full_sequence_indices_val]
+                    logger.info(f"Calculating log-likelihood for HMM {param_idx + 1} of {len(param_dict)}...")
                     
-                else:
-                    alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i] for i in full_sequence_indices_val]
-                
-                logger.info(f"Calculating wasserstein distance for HMM {param_idx + 1} of {len(param_dict)}...")
-                
-                distance = calc_neg_posterior_error(loaded_hmm, alpha_probs_val=alpha_probs_val)
-                
-                logger.info(f"Wasserstein distance calculated: {distance}")
-                criterion_values.append(distance)
-        
-        # select best model for ranking criterion for each order    
-        max_criterion = max(criterion_values)
-        max_idx = criterion_values.index(max_criterion)
-        # best_hmm = hmms[max_idx]
-        # best_hmm = best_hmm
-        best_param_slug = slugs[max_idx]
-        best_params = param_dict[best_param_slug]
-        
-        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test)
-        
-        # save best params to file
-        last_file_state = load_all(best_params_path)
+                    loglik = calc_loglik(loaded_hmm)
+                    
+                    logger.info(f"Log-likelihood calculated: {loglik}")
+                    criterion_values.append(loglik)
+                elif criterion=='wasserstein':
+                    
+                    logger.info(f"Calculating alpha probabilities (val) for HMM {param_idx + 1} of {len(param_dict)}...")
+                    
+                    loaded_hmm_predictor = HMMPredictor(loaded_hmm, pred_args={})
+                    
+                    loaded_hmm_predictor.filter_val(n_batches=5)
+                    
+                    full_sequence_indices_val = get_full_info_prefix_indices(loaded_hmm_predictor.model.model_args_val['lengths'])
+                    
+                    if loaded_hmm.train_args['log_prob']:
+                        alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i].exp() for i in full_sequence_indices_val]
+                        
+                    else:
+                        alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i] for i in full_sequence_indices_val]
+                    
+                    logger.info(f"Calculating wasserstein distance for HMM {param_idx + 1} of {len(param_dict)}...")
+                    
+                    distance = calc_neg_posterior_error(loaded_hmm, alpha_probs_val=alpha_probs_val)
+                    
+                    logger.info(f"Wasserstein distance calculated: {distance}")
+                    criterion_values.append(distance)
+            
+            # select best model for ranking criterion for each order    
+            max_criterion = max(criterion_values)
+            max_idx = criterion_values.index(max_criterion)
+            # best_hmm = hmms[max_idx]
+            # best_hmm = best_hmm
+            best_param_slug = slugs[max_idx]
+            best_params = param_dict[best_param_slug]
+            
+            best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test, fold_idx=fold_idx)
+            
+            # save best params to file
+            last_file_state = load_all(best_params_path)
 
-        if str(markov_order) not in last_file_state.keys():
-            slug_params_dict = {best_param_slug: best_params}
-            serialized = json.dumps(slug_params_dict, sort_keys=True, default=str).encode('utf-8') 
-            with open(best_params_path, 'a') as f:
-                f.write(json.dumps({markov_order: json.loads(serialized)}) + '\n')
-    
+            if str(markov_order) not in last_file_state.keys():
+                slug_params_dict = {best_param_slug: best_params}
+                serialized = json.dumps(slug_params_dict, sort_keys=True, default=str).encode('utf-8') 
+                with open(best_params_path, 'a') as f:
+                    f.write(json.dumps({markov_order: json.loads(serialized)}) + '\n')
+        else:
+            logger.warning(f"No trained params with number of hidden states >=3 available for Markov order {markov_order} - no best HMM selectable")
+            best_hmm = None
+            best_params = None
+            
     return best_hmm, best_params
 
 def calc_loglik(hmm):
@@ -668,7 +687,7 @@ def calc_neg_posterior_error(hmm, alpha_probs_val):
 
     return neg_posterior_error
 
-def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_train: SequenceData, data_val: SequenceData, data_test: SequenceData) -> HMMTrainer|None:
+def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_train: SequenceData, data_val: SequenceData, data_test: SequenceData, fold_idx: int|None = None) -> HMMTrainer|None:
     
     model = HMMFactory.create(model_params['model_name'])
     
@@ -676,7 +695,10 @@ def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_tra
     model_params['num_samples'] = -1
     model_params['reuse_fitted'] = True
     
-    processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset), load_only=True)
+    if fold_idx is not None:
+        processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}"), load_only=True)
+    else:
+        processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset), load_only=True)
     
     processhhmm.load_data(data_train, data_val, data_test)
     

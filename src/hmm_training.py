@@ -28,7 +28,10 @@ def main():
     general_config = read_config(os.path.join(CONFIG_PATH, "general_config.yml"))
     data_configs = read_config(os.path.join(CONFIG_PATH, "data_configs.yml"))
     model_configs = read_config(os.path.join(CONFIG_PATH, "model_configs.yml"))
-    mlflow_config = read_config(os.path.join(CONFIG_PATH, "mlflow_config.yml"))
+    # mlflow_config = read_config(os.path.join(CONFIG_PATH, "mlflow_config.yml"))
+
+    if general_config['model_config'] != 'hmm_training_config':
+        logger.warning('Exhaustive HMM parameter training should be performed with model_config: hmm_training_config!')
 
     FIG_EXP_DIR = os.path.join(EXPORT_PATH, 'plots')
     PARAMS_EXP_DIR = os.path.join(EXPORT_PATH, 'params')
@@ -39,7 +42,7 @@ def main():
     os.makedirs(DATASET_EXP_DIR, exist_ok=True)
 
     # mlflow.set_tracking_uri(mlflow_config["uri"])
-    mlflow.set_experiment(mlflow_config["experiment_name"])
+    # mlflow.set_experiment(mlflow_config["experiment_name"])
 
     for dataset in general_config["dataset"]:
 
@@ -86,7 +89,7 @@ def main():
 
             if general_config['cv_folds'] > 1:
 
-                folds, outer_train, outer_test = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
+                folds = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
                 times['data_prep_time'] = time.perf_counter()
                 base_cv_hash = cv_hashes[comb_idx]
 
@@ -98,13 +101,13 @@ def main():
 
                 for fold_idx, fold in enumerate(folds):
 
-                    data_train, data_test = fold
+                    data_train, data_val, data_test = fold
                     times['run_start_time'] = time.perf_counter()
 
                     model_params.update({'encoding_params': data_config['encoding_params'],
                                          'transform_params': data_config['transform_params']})
 
-                    fold_models.append(perform_run_train(data_train, data_test, model_params, times, os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}")))
+                    fold_models.append(perform_run_train(data_train, data_val, data_test, model_params, times, os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}")))
                     
                     calc_times = {'hmm_prep_duration': times['hmm_prep_time_end'] - times['hmm_prep_time_start'], 
                                   'hmm_train_duration': times['fitting_time'] - times['hmm_prep_time_end'], 
@@ -144,6 +147,8 @@ def main():
                 
 
 def perform_run_train(data_train, data_val, data_test, model_params_train, times, export_path = None) -> HMMTrainer:
+    
+    os.makedirs(export_path, exist_ok=True)
     
     model = HMMFactory.create(model_params_train['model_name'])
     

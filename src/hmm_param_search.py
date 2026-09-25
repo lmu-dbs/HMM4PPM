@@ -40,14 +40,17 @@ def main():
     general_config = read_config(os.path.join(CONFIG_PATH, "general_config.yml"))
     data_configs = read_config(os.path.join(CONFIG_PATH, "data_configs.yml"))
     model_configs = read_config(os.path.join(CONFIG_PATH, "model_configs.yml"))
-    mlflow_config = read_config(os.path.join(CONFIG_PATH, "mlflow_config.yml"))
+    # mlflow_config = read_config(os.path.join(CONFIG_PATH, "mlflow_config.yml"))
+    
+    if general_config['model_config'] != 'hmm_training_config':
+        logger.warning('HMM best parameter training should be performed with model_config: hmm_training_config and after executing hmm_training.py!')
 
     os.makedirs(FIG_EXP_DIR, exist_ok=True)
     os.makedirs(PARAMS_EXP_DIR, exist_ok=True)
     os.makedirs(DATASET_EXP_DIR, exist_ok=True)
 
     # mlflow.set_tracking_uri(mlflow_config["uri"])
-    mlflow.set_experiment(mlflow_config["experiment_name"])
+    # mlflow.set_experiment(mlflow_config["experiment_name"])
 
     for dataset in general_config["dataset"]:
         
@@ -98,7 +101,7 @@ def main():
                 random.seed(additional_params['seed'])
                 np.random.seed(additional_params['seed'])
 
-                folds, outer_train, outer_test = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
+                folds = data.train_test_split(train_pct=general_config.get('train_pct'), val_pct=general_config.get('val_pct'), cv=general_config.get('cv_folds'))
                 times['data_prep_time'] = time.perf_counter()
 
                 # model_params = dict(zip(list(model_config.keys()), [param for param in combination]))
@@ -109,7 +112,7 @@ def main():
 
                 for fold_idx, fold in enumerate(folds):
 
-                    data_train, data_test = fold
+                    data_train, data_val, data_test = fold
                     times['run_start_time'] = time.perf_counter()
                     
                     best_hmm, best_params = select_best_hmm_per_order(dataset=dataset, markov_order=markov_order, data_train=data_train, data_val=data_val, data_test=data_test, criterion=criterion, fold_idx=fold_idx)
@@ -136,10 +139,11 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
     
     if fold_idx is not None:
         param_dict_path = os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}", 'params.jsonl')
+        best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}", f'best_params_{criterion}.jsonl')
     else:
         param_dict_path = os.path.join(PARAMS_EXP_DIR, dataset, 'params.jsonl')
+        best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f'best_params_{criterion}.jsonl')
         
-    best_params_path = os.path.join(PARAMS_EXP_DIR, dataset, f'best_params_{criterion}.jsonl')
     
     try:
         best_params_slug_dict = {}
@@ -161,7 +165,7 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
         best_params = None
         
     if best_params is not None and best_param_slug is not None:
-        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test)
+        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test, fold_idx=fold_idx)
     else:
     
         param_dict = {}
@@ -181,64 +185,69 @@ def select_best_hmm_per_order(dataset: str, markov_order: int, data_train: Seque
         # sort params by hidden_dim (ascending) - we want to pick highest loglik with lowest amount of states
         param_dict = {k: v for k, v in sorted(param_dict.items(), key=lambda x: x[1]['hidden_dim']) if v['hidden_dim'] >= 3}
         
-        for param_idx, (param_slug, params) in enumerate(param_dict.items()):
-        
-            loaded_hmm = load_trained_hmm(params, param_slug, dataset, copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test))
+        if len(param_dict) > 0:
+            for param_idx, (param_slug, params) in enumerate(param_dict.items()):
             
-            slugs.append(param_slug)
-        
-            # calculate model ranking criterion
+                loaded_hmm = load_trained_hmm(params, param_slug, dataset, copy.deepcopy(data_train), copy.deepcopy(data_val), copy.deepcopy(data_test), fold_idx=fold_idx)
+                
+                slugs.append(param_slug)
             
-            if criterion=='loglik':
-            
-                logger.info(f"Calculating log-likelihood for HMM {param_idx + 1} of {len(param_dict)}...")
+                # calculate model ranking criterion
                 
-                loglik = calc_loglik(loaded_hmm)
+                if criterion=='loglik':
                 
-                logger.info(f"Log-likelihood calculated: {loglik}")
-                criterion_values.append(loglik)
-            elif criterion=='wasserstein':
-                
-                logger.info(f"Calculating alpha probabilities (val) for HMM {param_idx + 1} of {len(param_dict)}...")
-                            
-                if loaded_hmm is None:
-                    criterion_values.append(-float("inf"))
-                else:
-                    loaded_hmm_predictor = HMMPredictor(loaded_hmm, pred_args={})
+                    logger.info(f"Calculating log-likelihood for HMM {param_idx + 1} of {len(param_dict)}...")
                     
-                    loaded_hmm_predictor.filter_val(n_batches=5)
+                    loglik = calc_loglik(loaded_hmm)
                     
-                    full_sequence_indices_val = get_full_info_prefix_indices(loaded_hmm_predictor.model.model_args_val['lengths'])
+                    logger.info(f"Log-likelihood calculated: {loglik}")
+                    criterion_values.append(loglik)
+                elif criterion=='wasserstein':
                     
-                    if loaded_hmm.train_args['log_prob']:
-                        alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i].exp() for i in full_sequence_indices_val]
-                        
+                    logger.info(f"Calculating alpha probabilities (val) for HMM {param_idx + 1} of {len(param_dict)}...")
+                                
+                    if loaded_hmm is None:
+                        criterion_values.append(-float("inf"))
                     else:
-                        alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i] for i in full_sequence_indices_val]
-                    
-                    logger.info(f"Calculating wasserstein distance for HMM {param_idx + 1} of {len(param_dict)}...")
-                    
-                    distance = calc_neg_posterior_error(loaded_hmm, alpha_probs_val=alpha_probs_val)
-                    
-                    logger.info(f"Wasserstein distance calculated: {distance}")
-                    criterion_values.append(distance)
-        
-        # select best model for ranking criterion for each order    
-        max_criterion = max(criterion_values)
-        max_idx = criterion_values.index(max_criterion)
-        best_param_slug = slugs[max_idx]
-        best_params = param_dict[best_param_slug]
-        
-        best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test)
-        
-        # save best params to file
-        last_file_state = load_all(best_params_path)
+                        loaded_hmm_predictor = HMMPredictor(loaded_hmm, pred_args={})
+                        
+                        loaded_hmm_predictor.filter_val(n_batches=5)
+                        
+                        full_sequence_indices_val = get_full_info_prefix_indices(loaded_hmm_predictor.model.model_args_val['lengths'])
+                        
+                        if loaded_hmm.train_args['log_prob']:
+                            alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i].exp() for i in full_sequence_indices_val]
+                            
+                        else:
+                            alpha_probs_val = [loaded_hmm_predictor.filtered_sequences_val[i] for i in full_sequence_indices_val]
+                        
+                        logger.info(f"Calculating wasserstein distance for HMM {param_idx + 1} of {len(param_dict)}...")
+                        
+                        distance = calc_neg_posterior_error(loaded_hmm, alpha_probs_val=alpha_probs_val)
+                        
+                        logger.info(f"Wasserstein distance calculated: {distance}")
+                        criterion_values.append(distance)
+            
+            # select best model for ranking criterion for each order
+            max_criterion = max(criterion_values)
+            max_idx = criterion_values.index(max_criterion)
+            best_param_slug = slugs[max_idx]
+            best_params = param_dict[best_param_slug]
+            
+            best_hmm = load_trained_hmm(best_params, best_param_slug, dataset, data_train, data_val, data_test, fold_idx=fold_idx)
+            
+            # save best params to file
+            last_file_state = load_all(best_params_path)
 
-        if str(markov_order) not in last_file_state.keys():
-            slug_params_dict = {best_param_slug: best_params}
-            serialized = json.dumps(slug_params_dict, sort_keys=True, default=str).encode('utf-8') 
-            with open(best_params_path, 'a') as f:
-                f.write(json.dumps({markov_order: json.loads(serialized)}) + '\n')
+            if str(markov_order) not in last_file_state.keys():
+                slug_params_dict = {best_param_slug: best_params}
+                serialized = json.dumps(slug_params_dict, sort_keys=True, default=str).encode('utf-8') 
+                with open(best_params_path, 'a') as f:
+                    f.write(json.dumps({markov_order: json.loads(serialized)}) + '\n')
+        else:
+            logger.warning(f"No trained params with number of hidden states >=3 available for Markov order {markov_order} - no best HMM selectable")
+            best_hmm = None
+            best_params = None
     
     return best_hmm, best_params
 
@@ -288,7 +297,7 @@ def calc_neg_posterior_error(hmm, alpha_probs_val):
 
     return neg_posterior_error
 
-def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_train: SequenceData, data_val: SequenceData, data_test: SequenceData) -> HMMTrainer|None:
+def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_train: SequenceData, data_val: SequenceData, data_test: SequenceData, fold_idx: int|None = None) -> HMMTrainer|None:
     
     model = HMMFactory.create(model_params['model_name'])
     
@@ -296,8 +305,11 @@ def load_trained_hmm(model_params: dict, param_slug: str, dataset: str, data_tra
     model_params['num_samples'] = -1
     model_params['reuse_fitted'] = True
     
-    processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset), load_only=True)
-    
+    if fold_idx is not None:
+        processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset, f"fold_{fold_idx}"), load_only=True)
+    else:
+        processhhmm = HMMTrainer(model=model, train_args=model_params, encoding_params=model_params["encoding_params"], export_path=os.path.join(PARAMS_EXP_DIR, dataset), load_only=True)
+        
     processhhmm.load_data(data_train, data_val, data_test)
     
     pad_cols = list(set(chain(*model_params["encoding_params"].values())).difference(set(['tsle', 'tsmn', 'tscs', 'activity_idx'])))
