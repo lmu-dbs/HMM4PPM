@@ -1,6 +1,6 @@
 # HMM Specification
 
-Here, we provide the specification of prior distributions for the `pyro`-based HMMs. This specification is referenced in the paper within footnote 3. We use partially informed Dirichlet priors for the HMM model parameters of initial state distribution $\pi$, the transition probability matrix $A$ and the emission probabilities $B^{Activity}$ for channel `Activity`.
+Here, we provide the specification of prior distributions for the `pyro`-based HMMs. This specification is referenced in the paper within footnote 2. We use partially informed Dirichlet priors for the HMM model parameters of initial state distribution $\pi$, the transition probability matrix $A$ and the emission probabilities $B^{Activity}$ for channel `Activity`.
 
 ## Prior specification for HMM parameters
 

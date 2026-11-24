@@ -62,7 +62,7 @@ hmm_training_config:
     model_type: [HMM]
     model_params:
       num_steps: [2000]
-      hidden_dim: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+      hidden_dim: [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
       markov_order: [1, 2, 3]
       pad_buffer: [1.2] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
       # filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
@@ -182,7 +182,7 @@ full_pipeline_config_best_vanilla:
       perfect_phase_info: [False] # is controlled manually inside the model runs
       perfect_activity_info: [False] # is controlled manually inside the model runs
       max_pattern_size_train: [3,5,7,11,17,21]
-      process_stage_width_percentage: [0, 0.025, 0.1, 0.2, 0.5, 1]
+      process_stage_width_percentage: [0]
       min_freq: [0.00000001]
       task: ['rtp']
       break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
@@ -190,35 +190,6 @@ full_pipeline_config_best_vanilla:
       prune_func: [null]
       selection_method: ['PROB_LEN_DIST']
       weights: [null]
-
-full_pipeline_config_vanderspoel:
-  phase_config:
-    model_type: [HMM]
-    model_params:
-      num_steps: []
-      hidden_dim: []
-      markov_order: []
-      pad_buffer: [] # this specifies the factor with which max trace length (observed in training data) should be extended for for training and prediction
-      learning_rate: []
-      hmm_batch_size: []
-      max_pred_length: [20]
-      num_samples: [100]
-      model_name: [MultivariateHMM]
-      log_prob: [True]
-      reuse_fitted: [True]
-      mask_padded: [True]
-      alpha0: [1]
-      prior_function: [default]
-  ppm_config:
-    model_type: [vanderSpoel]
-    model_params:
-      include_phases: [False] # is controlled manually inside the model runs
-      use_hmm_phase_filtering: [False] # is controlled manually inside the model runs
-      perfect_phase_info: [False] # is controlled manually inside the model runs
-      perfect_activity_info: [False] # is controlled manually inside the model runs
-      task: ['rtp']
-      break_buffer: [1.2] # this terminates the sequence prediction if the predicted sequence length is higher than break_buffer*max_trace_len in the training set
-      filter_sequences: [True] # this filters the padded dummy activity tokens from the predicted sequences for evaluation
 
 full_pipeline_config_tree:
   phase_config:
