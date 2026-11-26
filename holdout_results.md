@@ -1,6 +1,9 @@
 # Holdout results for PPM models
 
-We performed model runs for different HHM-PPM model combinations (Phases, PhasesHMM) and the corresponding baselines (Global, IdxVar) for model pipelines tuned on the inner 5-fold cross-validation splits and eventually tested on a previously held out test set of 20\% of the original data per dataset.
+We performed model runs for different HHM-PPM model combinations (Phases, PhasesHMM) and the corresponding baselines (Global, IdxVar) for model pipelines tuned on the inner 5-fold cross-validation splits and eventually tested on a previously held-out test set of 20\% of the original data per dataset.
+The selection of the HMM model (number of states $n$ and Markov order $h$) was done by comparing the validation set fitness for the intermediate posterior predictive checks as described in the paper. With the selected HMM parameters, we selected the best corresponding PPM model configuration that achieved the best metrics for NAP and SFX respectively averaged across the 5 folds.
+The resulting HMM-PPM combination was evaluated on the originally held-out test set.
+
 Metrics reported are: Accuracy for Next Activity Prediction (NAP), Normalized Damerau-Levenshtein-Similarity for Activity Suffix Prediction (SFX).
 
 |PPM Task| Dataset   |BEST Global|BEST IdxVar|Best PhasesHMM|CART Global|CART IdxVar|CART Phases|CART PhasesHMM|LSTM Global|LSTM IdxVar|LSTM Phases|LSTM PhasesHMM|
